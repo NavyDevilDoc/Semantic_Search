@@ -6,7 +6,6 @@ import contractions
 from transformers import AutoTokenizer
 from sentence_transformers import SentenceTransformer
 import chromadb
-import numpy as np
 import pandas as pd
 import fitz  # PyMuPDF
 from PIL import Image

@@ -3,17 +3,19 @@ from FileLoader import FileLoader
 from TextPreprocessor import TextPreprocessor
 from EmbeddingGenerator import EmbeddingGenerator
 from DatabaseManager import DatabaseManager
+from Scoring import Scoring
 
 logging.basicConfig(level=logging.INFO)
 
 class SemanticClustering:
-    def __init__(self):
+    def __init__(self, db_name):
         self.file_loader = FileLoader()
         self.text_preprocessor = TextPreprocessor()
         self.embedding_generator = EmbeddingGenerator()
-        self.database_manager = DatabaseManager()
+        self.database_manager = DatabaseManager(db_name)
+        self.scoring = Scoring()
 
-    def run(self, query, top_k):
+    def load_data(self):
         try:
             documents = self.file_loader.select_files()
             if not documents:
@@ -39,13 +41,16 @@ class SemanticClustering:
             logging.error(f"An error occurred during document addition to the database: {e}")
             exit(1)
 
+    def query_data(self, query, top_k):
         try:
             preprocessed_query = self.text_preprocessor.preprocess_text(query)
             query_embedding = self.embedding_generator.model.encode([preprocessed_query])[0]
-            top_doc_ids = self.database_manager.query_documents(query_embedding, top_k)
-            top_docs = [documents[int(doc_id)] for doc_id in top_doc_ids]
-            for i, doc in enumerate(top_docs):
-                logging.info(f"Document {i+1}: {doc}")
+            document_embeddings = self.database_manager.get_all_embeddings()
+            scored_documents = self.scoring.compute_scores(query_embedding, document_embeddings)
+            top_scored_documents = scored_documents[:top_k]
+            documents = self.file_loader.select_files()  # Load documents again to retrieve content
+            for i, (doc_id, score) in enumerate(top_scored_documents):
+                logging.info(f"Document {i+1} (Score: {score}): {documents[doc_id]}")
         except Exception as e:
             logging.error(f"An error occurred during query processing or output: {e}")
             exit(1)
